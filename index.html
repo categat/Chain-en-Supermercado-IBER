@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Supply Chain para Supermercado IBER · Análisis de riesgos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..900&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F7F8F5; --panel:#FFFFFF; --ink:#13201D; --muted:#55615E; --line:#D5DBD7;
+  --teal:#0E4A43; --teal-2:#16655C; --tag:#F2C230; --tag-ink:#3B2E00;
+  --red:#C8432F; --red-soft:#F7DAD4; --blue:#2F6FA8; --blue-soft:#D9E6F3; --green:#2D7A4E; --green-soft:#D8EDDF;
+  --amber:#E8A13A; --amber-soft:#F8E6C8; --yellow-soft:#F6E7A5;
+  --h1:clamp(2.2rem,5.2vw,4.4rem); --h2:clamp(1.7rem,3.4vw,2.9rem); --h3:clamp(1.1rem,1.6vw,1.35rem);
+  --body:clamp(1rem,1.25vw,1.15rem);
+  --head:'Archivo', 'Arial Narrow', Arial, sans-serif;
+  --text:'Public Sans', 'Segoe UI', Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1715; --panel:#16211E; --ink:#E7EEEB; --muted:#A3B1AC; --line:#2B3A36;
+    --teal:#7FC8BC; --teal-2:#5DB3A6; --tag:#F2C230; --tag-ink:#2B2100;
+    --red:#EE7F6C; --red-soft:#3D221E; --blue:#82B4E3; --blue-soft:#1B2C3D; --green:#77C99A; --green-soft:#1A3326;
+    --amber:#F0B35A; --amber-soft:#3A2D18; --yellow-soft:#3A3417;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1715; --panel:#16211E; --ink:#E7EEEB; --muted:#A3B1AC; --line:#2B3A36;
+  --teal:#7FC8BC; --teal-2:#5DB3A6; --tag:#F2C230; --tag-ink:#2B2100;
+  --red:#EE7F6C; --red-soft:#3D221E; --blue:#82B4E3; --blue-soft:#1B2C3D; --green:#77C99A; --green-soft:#1A3326;
+  --amber:#F0B35A; --amber-soft:#3A2D18; --yellow-soft:#3A3417;
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--paper);color:var(--ink);font-family:var(--text);font-size:var(--body);line-height:1.5;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--tag);outline-offset:2px}
+h1,h2,h3{font-family:var(--head);margin:0;line-height:1.08;font-stretch:88%}
+h1{font-size:var(--h1);font-weight:850}
+h2{font-size:var(--h2);font-weight:800;max-width:24ch}
+h3{font-size:var(--h3);font-weight:700}
+p{margin:0}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr auto}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:1rem;padding:.6rem clamp(.8rem,2.5vw,2rem);border-bottom:1px solid var(--line);background:var(--paper);position:relative;z-index:5}
+.brand{font-family:var(--head);font-weight:850;font-stretch:110%;letter-spacing:.01em;display:flex;align-items:center;gap:.5rem;white-space:nowrap}
+.brand .pin{background:var(--tag);color:var(--tag-ink);padding:.05rem .45rem;border-radius:4px;font-size:.95rem}
+.sections{display:flex;gap:.25rem;margin-left:auto;overflow-x:auto}
+#openIndex{margin-left:auto}.sections+#openIndex{margin-left:0}
+.sections button{border:0;background:none;padding:.45rem .8rem;border-radius:6px;color:var(--muted);font-weight:600;white-space:nowrap}
+.sections button[aria-current="true"]{background:var(--teal);color:var(--paper)}
+.iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:.45rem .7rem;font-weight:600;white-space:nowrap}
+.progress{position:absolute;left:0;bottom:-1px;height:3px;background:var(--tag);transition:width .35s ease}
+
+/* stage */
+.stage{position:relative;overflow:hidden}
+.slide{position:absolute;inset:0;overflow-y:auto;padding:clamp(1.2rem,3.5vw,3rem) clamp(1rem,5vw,4.5rem) 2rem;opacity:0;visibility:hidden;transform:translateX(24px);transition:opacity .35s ease,transform .35s ease,visibility .35s}
+.slide.on{opacity:1;visibility:visible;transform:none}
+.slide.prev{transform:translateX(-24px)}
+.slide-inner{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:clamp(1rem,2.4vw,2rem);min-height:100%}
+.kicker{color:var(--teal-2);font-weight:700;font-size:.95rem}
+.lead{color:var(--muted);max-width:68ch}
+.hint{color:var(--muted);font-size:.9rem;display:flex;gap:.4rem;align-items:center}
+.hint::before{content:"";width:.55rem;height:.55rem;border-radius:50%;background:var(--tag);flex:none}
+
+/* bottom bar */
+.bottom{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.6rem clamp(.8rem,2.5vw,2rem);border-top:1px solid var(--line);background:var(--paper)}
+.navbtn{border:0;border-radius:8px;padding:.6rem 1.1rem;font-weight:700;background:var(--teal);color:var(--paper)}
+.navbtn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.navbtn:disabled{opacity:.35;cursor:default}
+.counter{color:var(--muted);font-variant-numeric:tabular-nums;font-size:.95rem}
+
+/* common pieces */
+.grid{display:grid;gap:1rem}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.split{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:clamp(1rem,3vw,2.5rem);align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1.2rem}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:1.1rem 1.2rem;text-align:left;display:flex;flex-direction:column;gap:.35rem;transition:border-color .2s, transform .2s}
+button.tile:hover{border-color:var(--teal-2)}
+button.tile[aria-pressed="true"],button.tile[aria-expanded="true"]{border-color:var(--teal);box-shadow:inset 0 0 0 2px var(--teal)}
+.big{font-family:var(--head);font-weight:850;font-size:clamp(2rem,4.2vw,3.4rem);line-height:1;font-stretch:92%;font-variant-numeric:tabular-nums}
+.small{font-size:.9rem;color:var(--muted)}
+.seg{display:inline-flex;align-self:flex-start;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel);flex-wrap:wrap}
+.seg button{border:0;background:none;padding:.5rem .95rem;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--teal);color:var(--paper)}
+.detail{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--tag);border-radius:10px;padding:1.2rem;min-height:9rem}
+.detail h3{margin-bottom:.4rem}
+table{border-collapse:collapse;width:100%;font-size:.95rem}
+th,td{padding:.55rem .6rem;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-family:var(--head);font-stretch:95%;font-weight:700;color:var(--muted)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+.pill{display:inline-block;padding:.1rem .55rem;border-radius:999px;font-size:.82rem;font-weight:700}
+.p-ext{background:var(--red-soft);color:var(--red)} .p-alto{background:var(--amber-soft);color:var(--ink)} .p-mod{background:var(--yellow-soft);color:var(--ink)} .p-bajo{background:var(--green-soft);color:var(--green)} .p-op{background:var(--blue-soft);color:var(--blue)}
+
+/* cover */
+#s0{background:var(--teal)}
+:root[data-theme="dark"] #s0{background:#0B3732}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) #s0{background:#0B3732}}
+#s0 .slide-inner{justify-content:space-between;color:#F2F5F1}
+.cover-tag{align-self:flex-start;background:var(--tag);color:#3B2E00;font-family:var(--head);font-weight:800;padding:.35rem .9rem;border-radius:6px;transform:rotate(-2deg)}
+#s0 h1{max-width:15ch;color:#F2F5F1}
+#s0 .lead{color:#C9DAD5;font-size:clamp(1.05rem,1.6vw,1.35rem)}
+.cover-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.2rem;border-top:1px solid rgba(255,255,255,.25);padding-top:1.2rem}
+.cover-meta span{display:block;color:#9FBDB6;font-size:.88rem}
+.cover-meta b{font-size:1.05rem}
+.start{align-self:flex-start;background:var(--tag);color:#3B2E00;border:0;border-radius:8px;padding:.8rem 1.4rem;font-weight:800;font-family:var(--head);font-size:1.1rem}
+
+/* index */
+.index-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.8rem}
+.index-grid button{text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:.9rem 1rem;display:flex;gap:.8rem;align-items:baseline}
+.index-grid button:hover{border-color:var(--teal-2)}
+.index-grid .n{font-family:var(--head);font-weight:850;color:var(--teal-2);font-variant-numeric:tabular-nums;min-width:1.6rem}
+.group-label{font-family:var(--head);font-weight:700;color:var(--muted);margin:.4rem 0 -.2rem}
+
+/* flow diagram */
+.flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.6rem;position:relative}
+.flow button{position:relative;z-index:1}
+.flow .tile .step{font-family:var(--head);font-weight:800;color:var(--teal-2);font-size:.85rem}
+.lane{height:8px;border-radius:4px;position:relative;overflow:hidden;margin:.3rem 0}
+.lane.prod{background:color-mix(in srgb,var(--tag) 35%,transparent)}
+.lane.info{background:color-mix(in srgb,var(--blue) 25%,transparent)}
+.lane i{position:absolute;top:0;width:40px;height:8px;border-radius:4px;animation:run 3.4s linear infinite}
+.lane.prod i{background:var(--tag)}
+.lane.info i{background:var(--blue);animation-direction:reverse}
+@keyframes run{from{left:-40px}to{left:100%}}
+.lane-label{font-size:.85rem;color:var(--muted);font-weight:600}
+
+/* bars */
+.bars{display:flex;flex-direction:column;gap:.7rem}
+.bar{display:grid;grid-template-columns:minmax(150px,220px) 1fr auto;align-items:center;gap:.8rem;border:0;background:none;text-align:left;padding:.3rem;border-radius:8px}
+.bar:hover,.bar[aria-pressed="true"]{background:var(--panel)}
+.bar .fill{height:30px;border-radius:4px;background:var(--teal-2);transform-origin:left;transition:transform .7s ease}
+.bar .v{font-family:var(--head);font-weight:800;font-variant-numeric:tabular-nums}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.6rem}
+.steps button .n{font-family:var(--head);font-weight:850;font-size:2rem;color:var(--teal-2);line-height:1}
+
+/* heat map */
+.heat-wrap{display:grid;grid-template-columns:auto 1fr;gap:.5rem;align-items:center}
+.ylab{writing-mode:vertical-rl;transform:rotate(180deg);color:var(--muted);font-weight:600;font-size:.9rem;text-align:center}
+.heat{position:relative;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:4px;aspect-ratio:1/1;width:100%;max-width:min(520px,46vh)}
+@media (max-width:900px){.heat{max-width:520px}}
+.cell{border-radius:6px;position:relative}
+.cell span{position:absolute;right:5px;bottom:2px;font-size:.72rem;color:rgba(0,0,0,.55);font-weight:700}
+.c-b{background:#8CC79A}.c-m{background:#F2D86F}.c-a{background:#F0A957}.c-e{background:#E5756A}
+.chip{position:absolute;width:15.5%;height:7%;min-height:22px;border:0;border-radius:5px;background:#13201D;color:#F2F5F1;font-weight:800;font-size:clamp(.62rem,1vw,.82rem);transition:left .9s ease,top .9s ease,background .3s;padding:0}
+.chip:hover,.chip[aria-pressed="true"]{background:var(--tag);color:#3B2E00}
+.xlab{display:grid;grid-template-columns:repeat(5,1fr);max-width:min(520px,46vh);font-size:.78rem;color:var(--muted);text-align:center;margin-left:calc(.5rem + 1.2rem)}
+.legend{display:flex;gap:.8rem;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.legend i{display:inline-block;width:.8rem;height:.8rem;border-radius:3px;vertical-align:-1px;margin-right:.3rem}
+
+/* tabs */
+.tabs{display:flex;gap:.3rem;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tabs button{border:0;background:none;padding:.6rem 1rem;font-weight:700;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--tag)}
+.tabpanel[hidden]{display:none}
+
+/* charts */
+svg text{font-family:var(--text)}
+.chart{width:100%;height:auto;display:block;max-height:60vh}
+@media (max-width:900px){.chart{max-height:none}}
+canvas{width:100%;height:auto;max-height:52vh;object-fit:contain;display:block;border-radius:8px;background:var(--panel)}
+.mc-stats{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.mc-card{border-radius:10px;padding:1rem;border:1px solid var(--line);background:var(--panel)}
+.mc-card.a{border-top:5px solid var(--red)} .mc-card.b{border-top:5px solid var(--blue)}
+.run{background:var(--tag);color:#3B2E00;border:0;border-radius:8px;padding:.6rem 1.1rem;font-weight:800}
+
+/* tree */
+.tree-alt{cursor:pointer}
+.tree-alt:focus{outline:none}
+.tree-alt:focus-visible rect{stroke:var(--tag);stroke-width:4}
+
+/* decision */
+.vote{display:flex;gap:.6rem;flex-wrap:wrap}
+.vote button{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:.7rem 1.1rem;font-weight:700}
+.vote button[aria-pressed="true"]{background:var(--teal);color:var(--paper);border-color:var(--teal)}
+.reco{background:var(--teal);color:#F2F5F1;border-radius:12px;padding:clamp(1.2rem,3vw,2.2rem);display:flex;flex-direction:column;gap:1rem}
+.reco h2{max-width:30ch;color:#F2F5F1}
+.reco .grid .tile{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#F2F5F1}
+.reco .big{color:var(--tag)}
+.reco .small{color:#C9DAD5}
+
+/* refs */
+.refs p{padding-left:2.2em;text-indent:-2.2em;margin-bottom:.7rem;max-width:90ch}
+
+/* modal */
+dialog{border:0;border-radius:12px;padding:0;max-width:min(560px,92vw);background:var(--panel);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(10,20,18,.55)}
+.modal-body{padding:1.4rem 1.5rem;display:flex;flex-direction:column;gap:.8rem}
+.modal-body .row{display:flex;gap:.5rem;flex-wrap:wrap}
+.close{align-self:flex-end;border:1px solid var(--line);background:none;border-radius:8px;padding:.45rem .9rem;font-weight:700}
+.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem}
+.kv div{background:var(--paper);border-radius:8px;padding:.5rem .7rem}
+.kv span{display:block;font-size:.78rem;color:var(--muted)}
+.kv b{font-family:var(--head);font-size:1.2rem}
+
+@media (max-width:900px){
+  .g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .split{grid-template-columns:1fr}
+  .flow,.steps{grid-template-columns:1fr 1fr}
+  .sections{display:none}
+  .sections+#openIndex{margin-left:auto}
+  .brand .full{display:none}
+}
+@media (max-width:520px){
+  .g2,.g3,.g4,.flow,.steps{grid-template-columns:1fr}
+  .bar{grid-template-columns:1fr auto}
+  .bar .fill{grid-column:1/-1;grid-row:2}
+  .mc-stats{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><span class="pin">IBER</span><span class="full">Supply Chain · riesgos</span></div>
+    <nav class="sections" aria-label="Secciones">
+      <button data-go="2">Contexto</button>
+      <button data-go="5">Cualitativo</button>
+      <button data-go="8">Cuantitativo</button>
+      <button data-go="13">Decisión</button>
+    </nav>
+    <button class="iconbtn" id="openIndex" aria-label="Abrir índice">Índice</button>
+    <button class="iconbtn" id="theme" aria-label="Cambiar tema claro u oscuro">Tema</button>
+    <div class="progress" id="progress"></div>
+  </header>
+
+  <main class="stage" id="stage">
+
+<!-- 0 PORTADA -->
+<section class="slide" id="s0" data-group="Inicio" data-title="Portada">
+ <div class="slide-inner">
+  <span class="cover-tag">Actividad 4 · primera entrega</span>
+  <div style="display:flex;flex-direction:column;gap:1.2rem">
+   <h1>Supply Chain para Supermercado IBER</h1>
+   <p class="lead" style="max-width:52ch">Análisis cualitativo y cuantitativo de riesgos para que la alta gerencia decida si invierte, cómo y con qué condiciones.</p>
+   <button class="start" data-go="1">Comenzar la presentación</button>
+  </div>
+  <div class="cover-meta">
+   <div><span>Presentado por</span><b>Orlando José Olea Gómez</b></div>
+   <div><span>Asignatura</span><b>Gerencia de riesgos en proyectos</b></div>
+   <div><span>Docente</span><b>Maria Alexandra Mora Rueda</b></div>
+   <div><span>Fecha</span><b>Octubre de 2026</b></div>
+  </div>
+ </div>
+</section>
+
+<!-- 1 INDICE -->
+<section class="slide" id="s1" data-group="Inicio" data-title="Índice">
+ <div class="slide-inner">
+  <p class="kicker">Cómo recorrer esta presentación</p>
+  <h2>Elija un tema o avance en orden</h2>
+  <p class="lead">Use los botones Anterior y Siguiente, las flechas del teclado o el botón Índice de la barra superior. Los elementos marcados con un punto amarillo responden al clic.</p>
+  <div id="indexHere"></div>
+ </div>
+</section>
+
+<!-- 2 PROBLEMA -->
+<section class="slide" id="s2" data-group="Contexto" data-title="El problema de IBER">
+ <div class="slide-inner">
+  <p class="kicker">Contexto</p>
+  <h2>IBER creció en tiendas, no en logística</h2>
+  <p class="lead">Cada proveedor entrega directo a cada tienda, los pedidos se hacen de forma empírica y el inventario registrado no coincide con el real.</p>
+  <p class="hint">Haga clic en cada cifra para ver de dónde sale</p>
+  <div class="grid g4" id="stats"></div>
+  <div class="detail" id="statDetail" aria-live="polite"><h3>Ventas estimadas: COP 108.000 millones al año</h3><p class="lead">60 tiendas con venta promedio de COP 150 millones al mes y margen bruto del 22 %. Son supuestos de trabajo que deben validarse con la contabilidad de IBER.</p></div>
+ </div>
+</section>
+
+<!-- 3 SUPPLY CHAIN -->
+<section class="slide" id="s3" data-group="Contexto" data-title="La propuesta: Supply Chain">
+ <div class="slide-inner">
+  <p class="kicker">La propuesta</p>
+  <h2>Una cadena integrada en lugar de 60 cadenas sueltas</h2>
+  <p class="lead">Supply Chain Management coordina los flujos de productos, información y dinero entre proveedores, centro de distribución y tiendas para maximizar el valor total (Chopra &amp; Meindl, 2013).</p>
+  <p class="hint">Haga clic en cada eslabón</p>
+  <div>
+   <p class="lane-label">Flujo de productos</p>
+   <div class="lane prod"><i></i><i style="animation-delay:-1.1s"></i><i style="animation-delay:-2.2s"></i></div>
+   <div class="flow" id="flow"></div>
+   <div class="lane info"><i></i><i style="animation-delay:-1.7s"></i></div>
+   <p class="lane-label">Flujo de información: ventas, pronóstico y pedidos</p>
+  </div>
+  <div class="detail" id="flowDetail" aria-live="polite"></div>
+ </div>
+</section>
+
+<!-- 4 BENEFICIOS -->
+<section class="slide" id="s4" data-group="Contexto" data-title="Beneficios y oportunidades">
+ <div class="slide-inner">
+  <p class="kicker">Por qué vale la pena</p>
+  <h2>COP 3.097 millones de beneficio al año</h2>
+  <div class="split">
+   <div style="display:flex;flex-direction:column;gap:.8rem">
+    <p class="hint">Haga clic en cada barra (millones de COP por año, desde el año 3)</p>
+    <div class="bars" id="bars"></div>
+    <div class="detail" id="barDetail" aria-live="polite"></div>
+   </div>
+   <div class="panel" style="display:flex;flex-direction:column;gap:.8rem">
+    <h3>Oportunidades estratégicas</h3>
+    <p><b>Compras centralizadas.</b> Negociar descuentos por volumen con los principales proveedores.</p>
+    <p><b>Datos de demanda.</b> Ajustar surtido y fortalecer las marcas propias, que son la ventaja de IBER.</p>
+    <p><b>Crecimiento ordenado.</b> Abrir tiendas nuevas sin multiplicar mermas ni agotados.</p>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- 5 METODOLOGIA -->
+<section class="slide" id="s5" data-group="Análisis cualitativo" data-title="Metodología de riesgos">
+ <div class="slide-inner">
+  <p class="kicker">Metodología</p>
+  <h2>Cinco pasos para gestionar el riesgo</h2>
+  <p class="lead">El proceso sigue la Guía del PMBOK (PMI, 2017) y la norma ISO 31000 (ISO, 2018). Campo et al. (2014) insisten en que es un ciclo continuo, no un ejercicio de una sola vez.</p>
+  <p class="hint">Haga clic en cada paso</p>
+  <div class="steps" id="steps"></div>
+  <div class="detail" id="stepDetail" aria-live="polite"></div>
+ </div>
+</section>
+
+<!-- 6 RBS -->
+<section class="slide" id="s6" data-group="Análisis cualitativo" data-title="Herramienta 1: RBS">
+ <div class="slide-inner">
+  <p class="kicker">Herramienta cualitativa 1</p>
+  <h2>Estructura de desglose de riesgos</h2>
+  <p class="lead">Los riesgos se organizan por su fuente para no omitir ninguno y asignar responsables. Se identificaron 12 amenazas y 2 oportunidades.</p>
+  <p class="hint">Abra cada categoría y luego cada riesgo</p>
+  <div class="grid g3" id="rbs"></div>
+ </div>
+</section>
+
+<!-- 7 MATRIZ -->
+<section class="slide" id="s7" data-group="Análisis cualitativo" data-title="Herramienta 2: matriz de probabilidad e impacto">
+ <div class="slide-inner">
+  <p class="kicker">Herramienta cualitativa 2</p>
+  <h2>Matriz de probabilidad e impacto</h2>
+  <div class="split">
+   <div style="display:flex;flex-direction:column;gap:.8rem">
+    <div class="seg" role="group" aria-label="Vista de la matriz">
+     <button aria-pressed="true" data-view="inh">Antes de responder</button>
+     <button aria-pressed="false" data-view="res">Después del plan de respuesta</button>
+    </div>
+    <p class="hint">Haga clic en cualquier riesgo para ver su ficha</p>
+    <div class="heat-wrap">
+     <div class="ylab">Probabilidad</div>
+     <div class="heat" id="heat"></div>
+    </div>
+    <div class="xlab"><span>1 Muy bajo</span><span>2 Bajo</span><span>3 Moderado</span><span>4 Alto</span><span>5 Muy alto</span></div>
+    <p class="small" style="text-align:center;max-width:520px">Impacto</p>
+    <div class="legend"><span><i class="c-b"></i>Bajo 1–4</span><span><i class="c-m"></i>Moderado 5–9</span><span><i class="c-a"></i>Alto 10–14</span><span><i class="c-e"></i>Extremo 15–25</span></div>
+   </div>
+   <div style="display:flex;flex-direction:column;gap:.8rem" id="heatText"></div>
+  </div>
+ </div>
+</section>
+
+<!-- 8 VPN -->
+<section class="slide" id="s8" data-group="Análisis cuantitativo" data-title="Herramienta 3: evaluación financiera">
+ <div class="slide-inner">
+  <p class="kicker">Herramienta cuantitativa 1</p>
+  <h2>En el caso base, el proyecto crea valor</h2>
+  <div class="tabs" role="tablist" data-tabs="vpn">
+   <button role="tab" aria-selected="true" data-tab="vpn-a">Indicadores</button>
+   <button role="tab" aria-selected="false" data-tab="vpn-b">Flujo de caja</button>
+   <button role="tab" aria-selected="false" data-tab="vpn-c">Supuestos</button>
+  </div>
+  <div class="tabpanel" id="vpn-a">
+   <div class="grid g4">
+    <div class="tile"><span class="small">Valor presente neto al 14 %</span><span class="big" style="color:var(--green)">977</span><span class="small">millones de COP</span></div>
+    <div class="tile"><span class="small">Tasa interna de retorno</span><span class="big">20,9 %</span><span class="small">frente a un costo de capital de 14 %</span></div>
+    <div class="tile"><span class="small">Relación beneficio/costo</span><span class="big">1,20</span><span class="small">pesos por cada peso invertido</span></div>
+    <div class="tile"><span class="small">Recuperación descontada</span><span class="big">4,1</span><span class="small">años, de un horizonte de 5</span></div>
+   </div>
+   <p class="lead" style="margin-top:1rem">Este resultado supone que cada variable toma su valor más probable. Alonso y Berggrun (2015) advierten que un solo valor esperado oculta la dispersión de resultados; por eso el análisis sigue con herramientas que incorporan la incertidumbre.</p>
+  </div>
+  <div class="tabpanel" id="vpn-b" hidden>
+   <div class="panel"><svg class="chart" id="cumChart" viewBox="0 0 900 320" role="img" aria-label="Flujo descontado acumulado por año"></svg></div>
+   <div class="scroll" style="margin-top:.8rem"><table>
+    <tr><th>Millones de COP</th><th class="num">Año 0</th><th class="num">Año 1</th><th class="num">Año 2</th><th class="num">Año 3</th><th class="num">Año 4</th><th class="num">Año 5</th></tr>
+    <tr><td>Flujo neto</td><td class="num">−4.850,0</td><td class="num">648,6</td><td class="num">1.732,6</td><td class="num">2.197,2</td><td class="num">2.197,2</td><td class="num">2.197,2</td></tr>
+    <tr><td>Descontado acumulado</td><td class="num">−4.850,0</td><td class="num">−4.281,1</td><td class="num">−2.947,9</td><td class="num">−1.464,8</td><td class="num">−163,9</td><td class="num"><b>977,3</b></td></tr>
+   </table></div>
+  </div>
+  <div class="tabpanel" id="vpn-c" hidden>
+   <div class="grid g3">
+    <div class="panel"><h3>Inversión</h3><p class="lead">COP 4.850 millones: CEDI 2.500, WMS e integración 1.300, gestión del cambio 250 y otras tareas.</p></div>
+    <div class="panel"><h3>Costo operativo</h3><p class="lead">COP 900 millones al año adicionales por arriendo, personal y mantenimiento del CEDI.</p></div>
+    <div class="panel"><h3>Adopción</h3><p class="lead">50 % del beneficio el año 1, 85 % el año 2 y 100 % desde el año 3. Tasa de descuento: 14 %.</p></div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- 9 VME -->
+<section class="slide" id="s9" data-group="Análisis cuantitativo" data-title="Herramienta 4: valor monetario esperado">
+ <div class="slide-inner">
+  <p class="kicker">Herramienta cuantitativa 2</p>
+  <h2>Valor monetario esperado y reserva de contingencia</h2>
+  <p class="lead">El VME multiplica la probabilidad de cada riesgo por su impacto en pesos. La suma muestra cuánto dinero está en juego.</p>
+  <div class="seg" role="group" aria-label="Escenario de exposición">
+   <button aria-pressed="true" data-vme="inh">Sin respuestas</button>
+   <button aria-pressed="false" data-vme="res">Con plan de respuesta</button>
+  </div>
+  <div class="split">
+   <div class="panel"><svg class="chart" id="vmeChart" viewBox="0 0 640 400" role="img" aria-label="VME por riesgo"></svg></div>
+   <div style="display:flex;flex-direction:column;gap:.8rem">
+    <div class="tile"><span class="small">Exposición total por amenazas</span><span class="big" id="vmeTotal">921</span><span class="small" id="vmeNote">millones de COP · 19 % de la inversión</span></div>
+    <div class="panel">
+     <h3 style="margin-bottom:.4rem">Presupuesto recomendado</h3>
+     <table>
+      <tr><td>Inversión del caso base</td><td class="num">4.850</td></tr>
+      <tr><td>Plan de respuesta a riesgos</td><td class="num">250</td></tr>
+      <tr><td>Reserva de contingencia (7 %)</td><td class="num">340</td></tr>
+      <tr><td><b>Total</b></td><td class="num"><b>5.440</b></td></tr>
+     </table>
+     <p class="small" style="margin-top:.5rem">Cada peso invertido en respuestas evita en promedio 2,3 pesos de pérdida esperada.</p>
+    </div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- 10 MONTE CARLO -->
+<section class="slide" id="s10" data-group="Análisis cuantitativo" data-title="Herramienta 5: simulación de Monte Carlo">
+ <div class="slide-inner">
+  <p class="kicker">Herramienta cuantitativa 3</p>
+  <h2>Monte Carlo: 10.000 futuros posibles</h2>
+  <p class="lead">Cada variable incierta toma valores al azar dentro de un rango (distribución triangular) y el VPN se recalcula 10.000 veces, como lo hace Risk Simulator.</p>
+  <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:center">
+   <div class="seg" role="group" aria-label="Escenario a mostrar">
+    <button aria-pressed="false" data-mc="A">Sin plan de respuesta</button>
+    <button aria-pressed="false" data-mc="B">Con plan de respuesta</button>
+    <button aria-pressed="true" data-mc="AB">Comparar ambos</button>
+   </div>
+   <button class="run" id="mcRun">Ejecutar simulación</button>
+   <span class="small" id="mcCount">0 iteraciones</span>
+  </div>
+  <div class="split">
+   <div><canvas id="mc" width="900" height="440" aria-label="Histograma del VPN simulado"></canvas><p class="small" style="margin-top:.3rem">VPN en millones de COP. La línea vertical marca VPN = 0.</p></div>
+   <div style="display:flex;flex-direction:column;gap:.8rem">
+    <div class="mc-stats">
+     <div class="mc-card a"><span class="small">Sin plan · probabilidad de crear valor</span><div class="big" id="pa" style="color:var(--red)">–</div><span class="small">VPN medio: <b id="ma">–</b></span></div>
+     <div class="mc-card b"><span class="small">Con plan · probabilidad de crear valor</span><div class="big" id="pb" style="color:var(--blue)">–</div><span class="small">VPN medio: <b id="mb">–</b></span></div>
+    </div>
+    <div class="detail"><h3>Qué significa</h3><p class="lead">Sin gestión de riesgos, el proyecto tiene menos del 50 % de probabilidad de crear valor, porque los sobrecostos pueden ser grandes y los ahorros tienen techo. Con el plan, la probabilidad sube a cerca del 96 % y la dispersión se reduce un tercio.</p></div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- 11 TORNADO -->
+<section class="slide" id="s11" data-group="Análisis cuantitativo" data-title="Herramienta 6: sensibilidad">
+ <div class="slide-inner">
+  <p class="kicker">Herramienta cuantitativa 4</p>
+  <h2>Sensibilidad: las mermas deciden el resultado</h2>
+  <p class="hint">Haga clic en cada barra para ver el rango del VPN</p>
+  <div class="split">
+   <div class="panel"><svg class="chart" id="tornado" viewBox="0 0 760 470" role="img" aria-label="Diagrama de tornado"></svg></div>
+   <div class="detail" id="torDetail" aria-live="polite"></div>
+  </div>
+ </div>
+</section>
+
+<!-- 12 ARBOL -->
+<section class="slide" id="s12" data-group="Análisis cuantitativo" data-title="Herramienta 7: árbol de decisión">
+ <div class="slide-inner">
+  <p class="kicker">Herramienta cuantitativa 5</p>
+  <h2>Árbol de decisión: cuatro caminos posibles</h2>
+  <p class="hint">Haga clic en cada alternativa del árbol</p>
+  <div class="split">
+   <div class="panel"><svg class="chart" id="tree" viewBox="0 0 760 520" role="img" aria-label="Árbol de decisión"></svg></div>
+   <div class="detail" id="treeDetail" aria-live="polite"></div>
+  </div>
+  <p class="small">Cada rama resume la simulación en tres escenarios (P10, P50, P90) ponderados con 0,3, 0,4 y 0,3. Cifras en millones de COP.</p>
+ </div>
+</section>
+
+<!-- 13 RESPUESTAS -->
+<section class="slide" id="s13" data-group="Decisión y control" data-title="Plan de respuesta">
+ <div class="slide-inner">
+  <p class="kicker">Plan de respuesta</p>
+  <h2>Una respuesta y un responsable para cada riesgo</h2>
+  <div class="seg" role="group" aria-label="Filtrar por estrategia" id="respFilter"></div>
+  <div class="scroll"><table id="respTable"></table></div>
+ </div>
+</section>
+
+<!-- 14 SEGUIMIENTO -->
+<section class="slide" id="s14" data-group="Decisión y control" data-title="Seguimiento y control">
+ <div class="slide-inner">
+  <p class="kicker">Seguimiento y control</p>
+  <h2>Las plantillas del curso aplicadas a IBER</h2>
+  <div class="tabs" role="tablist" data-tabs="seg">
+   <button role="tab" aria-selected="true" data-tab="seg-a">Cronograma</button>
+   <button role="tab" aria-selected="false" data-tab="seg-b">Tareas (Anexo 4)</button>
+   <button role="tab" aria-selected="false" data-tab="seg-c">Panel (Anexo 5)</button>
+   <button role="tab" aria-selected="false" data-tab="seg-d">Horas (Anexo 6)</button>
+  </div>
+  <div class="tabpanel" id="seg-a"><div class="panel"><svg class="chart" id="gantt" viewBox="0 0 980 470" role="img" aria-label="Cronograma del proyecto"></svg></div><p class="small" style="margin-top:.4rem">Corte: 2 de octubre de 2026. Proyecto de unos 14 meses.</p></div>
+  <div class="tabpanel" id="seg-b" hidden><div class="scroll"><table id="a4"></table></div></div>
+  <div class="tabpanel" id="seg-c" hidden>
+   <div class="grid g4">
+    <div class="tile"><span class="small">Tareas completas</span><span class="big">1/13</span><span class="small">1 en progreso, 11 sin iniciar</span></div>
+    <div class="tile"><span class="small">Costo planeado a la fecha</span><span class="big">92</span><span class="small">millones de COP</span></div>
+    <div class="tile"><span class="small">Costo real a la fecha</span><span class="big" style="color:var(--red)">98</span><span class="small">desviación de +6,5 %</span></div>
+    <div class="tile"><span class="small">Riesgos extremos activos</span><span class="big">3</span><span class="small">R01, R02 y R03</span></div>
+   </div>
+   <p class="lead" style="margin-top:1rem">Pendientes: 3 decisiones (alternativa, ubicación del CEDI y proveedor WMS), 5 acciones y 1 solicitud de cambio. El panel se actualiza cada dos semanas en el comité directivo.</p>
+  </div>
+  <div class="tabpanel" id="seg-d" hidden><div class="scroll"><table>
+   <tr><th>ID</th><th>Rol</th><th class="num">Horas habituales</th><th class="num">Horas extra</th><th class="num">Otros</th><th class="num">Total</th><th class="num">Tarifa/hora</th><th class="num">A pagar (COP)</th></tr>
+   <tr><td>CON-01</td><td>Gerente de proyecto</td><td class="num">40</td><td class="num">4</td><td class="num">0</td><td class="num">44</td><td class="num">180.000</td><td class="num">8.100.000</td></tr>
+   <tr><td>CON-02</td><td>Analista de riesgos</td><td class="num">40</td><td class="num">6</td><td class="num">0</td><td class="num">46</td><td class="num">140.000</td><td class="num">6.650.000</td></tr>
+   <tr><td>CON-03</td><td>Especialista en logística</td><td class="num">40</td><td class="num">2</td><td class="num">0</td><td class="num">42</td><td class="num">150.000</td><td class="num">6.375.000</td></tr>
+   <tr><td>CON-04</td><td>Analista financiero</td><td class="num">36</td><td class="num">0</td><td class="num">4</td><td class="num">40</td><td class="num">120.000</td><td class="num">4.800.000</td></tr>
+   <tr><td></td><td><b>Total</b></td><td class="num"><b>156</b></td><td class="num"><b>12</b></td><td class="num"><b>4</b></td><td class="num"><b>172</b></td><td></td><td class="num"><b>25.925.000</b></td></tr>
+  </table></div><p class="small" style="margin-top:.4rem">Semana del 28 de septiembre de 2026. Las horas extra tienen un recargo del 25 %.</p></div>
+ </div>
+</section>
+
+<!-- 15 RECOMENDACION -->
+<section class="slide" id="s15" data-group="Decisión y control" data-title="Recomendación">
+ <div class="slide-inner">
+  <div class="reco">
+   <p style="font-weight:700;color:var(--tag)">Recomendación a la alta gerencia</p>
+   <h2>Aprobar el Supply Chain con CEDI propio, condicionado al plan de respuesta a riesgos</h2>
+   <div class="grid g4">
+    <div class="tile"><span class="big">95,8 %</span><span class="small">probabilidad de crear valor</span></div>
+    <div class="tile"><span class="big">1.106</span><span class="small">millones de COP de VPN esperado</span></div>
+    <div class="tile"><span class="big">5.440</span><span class="small">millones de COP con reservas</span></div>
+    <div class="tile"><span class="big">5</span><span class="small">tiendas en piloto antes de desplegar</span></div>
+   </div>
+  </div>
+  <div class="panel" style="display:flex;flex-direction:column;gap:.8rem">
+   <h3>Si usted fuera la gerencia, ¿qué decidiría?</h3>
+   <div class="vote" id="vote">
+    <button aria-pressed="false" data-v="A">Aprobar con plan de respuesta</button>
+    <button aria-pressed="false" data-v="B">Tercerizar con un operador 3PL</button>
+    <button aria-pressed="false" data-v="C">Aprobar sin plan de respuesta</button>
+    <button aria-pressed="false" data-v="D">No hacer nada</button>
+   </div>
+   <p class="lead" id="voteOut" aria-live="polite"></p>
+  </div>
+ </div>
+</section>
+
+<!-- 16 CONCLUSIONES -->
+<section class="slide" id="s16" data-group="Decisión y control" data-title="Conclusiones">
+ <div class="slide-inner">
+  <p class="kicker">Cierre</p>
+  <h2>Conclusiones</h2>
+  <div class="grid g2">
+   <div class="panel"><h3>Los riesgos críticos son humanos</h3><p class="lead">Resistencia al cambio, integración tecnológica y calidad de datos pesan más que la infraestructura. Coincide con lo que Pinto (2015) observa en proyectos de implementación.</p></div>
+   <div class="panel"><h3>Un VPN positivo no basta</h3><p class="lead">El caso base muestra COP 977 millones, pero sin gestión de riesgos la probabilidad de crear valor cae por debajo del 50 %.</p></div>
+   <div class="panel"><h3>Gestionar riesgos paga</h3><p class="lead">COP 250 millones en respuestas suben el valor esperado en más de COP 1.200 millones.</p></div>
+   <div class="panel"><h3>Las mermas son el indicador clave</h3><p class="lead">Es la variable que más mueve el resultado; el comité de riesgos debe revisarla cada mes junto con la exactitud del inventario.</p></div>
+  </div>
+ </div>
+</section>
+
+<!-- 17 REFERENCIAS -->
+<section class="slide" id="s17" data-group="Decisión y control" data-title="Referencias">
+ <div class="slide-inner refs">
+  <p class="kicker">Normas APA, 7.ª edición</p>
+  <h2>Referencias</h2>
+  <div>
+   <p>Alonso, J. C., &amp; Berggrun, L. (2015). <i>Introducción al análisis de riesgo financiero</i> (3.ª ed.). Ecoe Ediciones.</p>
+   <p>Ballou, R. H. (2004). <i>Logística: Administración de la cadena de suministro</i> (5.ª ed.). Pearson Educación.</p>
+   <p>Bataller, A. (2016). <i>La gestión de proyectos</i>. Editorial UOC.</p>
+   <p>Campo, A. R., Domínguez, M. C., &amp; Rodrigo, R. V. (2014). <i>Gestión de proyectos</i>. Ra-Ma.</p>
+   <p>Chopra, S., &amp; Meindl, P. (2013). <i>Administración de la cadena de suministro: Estrategia, planeación y operación</i> (5.ª ed.). Pearson Educación.</p>
+   <p>International Organization for Standardization. (2018). <i>Gestión del riesgo: Directrices</i> (ISO 31000:2018).</p>
+   <p>Pinto, J. K. (2015). <i>Gerencia de proyectos: Cómo lograr la ventaja competitiva</i> (3.ª ed.). Pearson Educación.</p>
+   <p>Project Management Institute. (2017). <i>La guía de los fundamentos para la dirección de proyectos (Guía del PMBOK)</i> (6.ª ed.).</p>
+  </div>
+  <p class="small">Nota. Las cifras financieras son estimaciones del autor con fines académicos y deben validarse con información real de Supermercado IBER.</p>
+ </div>
+</section>
+
+  </main>
+
+  <footer class="bottom">
+    <button class="navbtn ghost" id="prev">Anterior</button>
+    <span class="counter" id="counter">1 / 18</span>
+    <button class="navbtn" id="next">Siguiente</button>
+  </footer>
+</div>
+
+<dialog id="modal"><div class="modal-body" id="modalBody"></div></dialog>
+<dialog id="indexDlg"><div class="modal-body"><button class="close" data-close>Cerrar</button><h3>Índice</h3><div id="indexDlgHere"></div></div></dialog>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const fmt=v=>Math.round(v).toLocaleString('es-CO');
+const slides=$$('.slide'); let cur=0;
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---------- navigation ---------- */
+function show(i,fromHash){
+  i=Math.max(0,Math.min(slides.length-1,i));
+  slides.forEach((s,k)=>{s.classList.toggle('on',k===i);s.classList.toggle('prev',k<i);s.setAttribute('aria-hidden',k!==i)});
+  cur=i; $('#counter').textContent=(i+1)+' / '+slides.length;
+  $('#prev').disabled=i===0; $('#next').disabled=i===slides.length-1;
+  $('#progress').style.width=((i)/(slides.length-1)*100)+'%';
+  const g=slides[i].dataset.group;
+  $$('.sections button').forEach(b=>{const t=slides[+b.dataset.go].dataset.group;b.setAttribute('aria-current',t===g)});
+  if(!fromHash) history.replaceState(null,'','#'+(i+1));
+  slides[i].scrollTop=0;
+  onEnter(i);
+}
+$('#prev').onclick=()=>show(cur-1); $('#next').onclick=()=>show(cur+1);
+document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b){show(+b.dataset.go);const d=b.closest('dialog');if(d)d.close();}});
+document.addEventListener('keydown',e=>{
+  if(document.querySelector('dialog[open]'))return;
+  if(['INPUT','TEXTAREA'].includes(e.target.tagName))return;
+  if(e.key==='ArrowRight'||e.key==='PageDown'){show(cur+1);e.preventDefault()}
+  if(e.key==='ArrowLeft'||e.key==='PageUp'){show(cur-1);e.preventDefault()}
+});
+let tx=null;
+$('#stage').addEventListener('touchstart',e=>{tx=e.touches[0].clientX},{passive:true});
+$('#stage').addEventListener('touchend',e=>{if(tx===null)return;const dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>70)show(cur+(dx<0?1:-1));tx=null},{passive:true});
+
+/* index */
+function buildIndex(target){
+  let html='',last='';
+  slides.forEach((s,k)=>{if(s.dataset.group!==last){if(last)html+='</div>';html+=`<p class="group-label">${s.dataset.group}</p><div class="index-grid">`;last=s.dataset.group}
+    html+=`<button data-go="${k}"><span class="n">${k+1}</span><span>${s.dataset.title}</span></button>`});
+  target.innerHTML=html+'</div>';
+}
+buildIndex($('#indexHere')); buildIndex($('#indexDlgHere'));
+$('#openIndex').onclick=()=>$('#indexDlg').showModal();
+$$('dialog').forEach(d=>d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-close]'))d.close()}));
+
+/* theme */
+$('#theme').onclick=()=>{
+  const root=document.documentElement; const dark=root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme=dark?'light':'dark'; try{localStorage.setItem('iber-theme',root.dataset.theme)}catch(e){}
+  redraw();
+};
+try{const t=localStorage.getItem('iber-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}
+
+/* tabs */
+$$('[data-tabs]').forEach(tl=>{
+  const btns=[...tl.querySelectorAll('[role=tab]')];
+  btns.forEach(b=>b.onclick=()=>{btns.forEach(x=>{x.setAttribute('aria-selected',x===b);document.getElementById(x.dataset.tab).hidden=x!==b});redraw()});
+});
+
+/* ---------- data ---------- */
+const RISKS={
+ R01:{n:'Resistencia al cambio',c:'Organizacional',d:'Por temor a perder control o empleo, el personal de tiendas y bodega no adopta los nuevos procesos, lo que retrasa la estabilización y reduce beneficios.',p:4,i:4,pr:60,im:250,rp:2,ri:3,rv:60,e:'Mitigar',a:'Plan de gestión del cambio, líderes por tienda, capacitación práctica, comunicación de beneficios e incentivos por cumplimiento de indicadores.',who:'Gerente de proyecto y Talento Humano',t:'Asistencia a capacitaciones menor al 80 %'},
+ R02:{n:'Retraso en WMS e integración ERP/POS',c:'Tecnológico',d:'Por la complejidad de integrar el WMS con el ERP y los puntos de venta, la salida en vivo se retrasa.',p:4,i:4,pr:55,im:280,rp:2,ri:3,rv:60,e:'Mitigar',a:'Proveedor con experiencia en retail, pruebas de integración tempranas, piloto en 5 tiendas e hitos con penalidades contractuales.',who:'Jefe de TI',t:'Retraso de más de 2 semanas en un hito'},
+ R03:{n:'Datos maestros inexactos',c:'Tecnológico',d:'Por registros históricos deficientes, los datos maestros e inventarios iniciales son inexactos y generan pedidos erróneos.',p:5,i:3,pr:75,im:120,rp:3,ri:2,rv:28,e:'Mitigar',a:'Inventario físico general y gobierno de datos maestros antes de la salida en vivo.',who:'Analista de datos',t:'Exactitud de inventario menor al 95 %'},
+ R04:{n:'Sobrecostos en el CEDI',c:'Proyecto y costos',d:'Por diseño incompleto o cambios de alcance, la adecuación del CEDI supera el presupuesto.',p:3,i:4,pr:40,im:300,rp:2,ri:4,rv:50,e:'Transferir',a:'Contrato llave en mano a precio fijo, diseño detallado aprobado antes de contratar y control de cambios.',who:'Gerente de proyecto',t:'Desviación de costo mayor al 5 %'},
+ R05:{n:'Incumplimiento de proveedores',c:'Operacional',d:'Por falta de acuerdos de servicio, los proveedores incumplen las ventanas de entrega al CEDI y causan agotados.',p:3,i:4,pr:45,im:220,rp:2,ri:3,rv:37.5,e:'Mitigar',a:'Acuerdos de nivel de servicio, ventanas de recibo, evaluación mensual de proveedores y stock de seguridad.',who:'Jefe de Compras',t:'Cumplimiento de entregas menor al 90 %'},
+ R06:{n:'Fallas en cadena de frío',c:'Operacional',d:'Por fallas de equipos o protocolos se rompe la cadena de frío y se pierden perecederos.',p:3,i:4,pr:35,im:220,rp:2,ri:3,rv:22.5,e:'Mitigar',a:'Sensores IoT de temperatura, protocolo de cadena de frío y vehículos refrigerados certificados.',who:'Jefe del CEDI',t:'Alarma de temperatura fuera de rango'},
+ R07:{n:'Ciberataque o caída del sistema',c:'Tecnológico',d:'Por vulnerabilidades informáticas, un ataque o caída detiene la operación del CEDI y el abastecimiento de las 60 tiendas.',p:2,i:5,pr:15,im:450,rp:1,ri:4,rv:20,e:'Transferir',a:'Póliza de riesgo cibernético, respaldo en la nube y plan de continuidad del negocio.',who:'Jefe de TI',t:'Incidente de seguridad detectado'},
+ R08:{n:'Brecha en planeación de demanda',c:'Organizacional',d:'Por falta de experiencia, el pronóstico de demanda es impreciso.',p:3,i:3,pr:40,im:100,rp:2,ri:2,rv:16,e:'Mitigar',a:'Formación en planeación de ventas y operaciones (S&OP) y contratación de un planeador de demanda.',who:'Gerente de Operaciones',t:'Error de pronóstico mayor al 25 %'},
+ R09:{n:'Hurto en transporte',c:'Externo y financiero',d:'Por la inseguridad urbana se presentan hurtos de mercancía en ruta.',p:3,i:3,pr:35,im:110,rp:2,ri:2,rv:12,e:'Transferir',a:'Seguro de mercancías, GPS en vehículos y transportador con protocolo de seguridad.',who:'Jefe de Transporte',t:'Siniestro reportado'},
+ R10:{n:'Rotación de personal clave',c:'Organizacional',d:'Por ofertas del mercado renuncia personal clave del proyecto.',p:2,i:3,pr:25,im:120,rp:2,ri:2,rv:13.5,e:'Mitigar',a:'Documentación del conocimiento, plan de sucesión y bonificación por permanencia.',who:'Gerente de proyecto',t:'Renuncia de personal clave'},
+ R11:{n:'Variación de la tasa de cambio',c:'Externo y financiero',d:'Por devaluación del peso aumenta el costo de racks y montacargas importados.',p:3,i:2,pr:50,im:70,rp:2,ri:1,rv:8,e:'Mitigar',a:'Cobertura cambiaria (forward) y preferencia por proveedores nacionales.',who:'Gerente Financiero',t:'TRM 10 % por encima de la presupuestada'},
+ R12:{n:'Restricciones de movilidad de carga',c:'Externo y financiero',d:'Por nuevas restricciones de movilidad de carga en Bogotá aumentan los costos de distribución.',p:2,i:2,pr:25,im:80,rp:2,ri:2,rv:9,e:'Aceptar',a:'Aceptación activa: ruteo nocturno, monitoreo normativo y uso de la reserva de contingencia.',who:'Jefe de Transporte',t:'Nuevo decreto de movilidad'}
+};
+const OPS={O01:{n:'Descuentos por volumen',d:'Al centralizar compras, IBER obtiene descuentos por volumen.',e:'Explotar',a:'Centralizar compras en el CEDI y renegociar con los 20 principales proveedores.',who:'Jefe de Compras',v:'+300 M (50 %)'},O02:{n:'Datos para surtido y marcas propias',d:'Los datos de demanda permiten optimizar el surtido y las marcas propias.',e:'Mejorar',a:'Tablero de inteligencia de negocios para surtido y marcas propias.',who:'Gerente Comercial',v:'+150 M (30 %)'}};
+const lvl=s=>s<=4?['Bajo','p-bajo']:s<=9?['Moderado','p-mod']:s<=14?['Alto','p-alto']:['Extremo','p-ext'];
+
+/* ---------- modal ---------- */
+function openRisk(id){
+  const r=RISKS[id]; const s=r.p*r.i, rs=r.rp*r.ri; const [l,c]=lvl(s),[l2,c2]=lvl(rs);
+  $('#modalBody').innerHTML=`<button class="close" data-close>Cerrar</button>
+  <p class="small">${id} · ${r.c}</p><h3 style="font-size:1.5rem">${r.n}</h3>
+  <div class="row"><span class="pill ${c}">Inherente: ${l} (${s})</span><span class="pill ${c2}">Residual: ${l2} (${rs})</span></div>
+  <p>${r.d}</p>
+  <div class="kv"><div><span>Probabilidad</span><b>${r.pr} %</b></div><div><span>Impacto</span><b>${r.im} M</b></div><div><span>VME</span><b>${(r.pr*r.im/100).toLocaleString('es-CO')} M</b></div></div>
+  <p><b>Respuesta (${r.e}):</b> ${r.a}</p>
+  <p class="small"><b>Responsable:</b> ${r.who} · <b>Disparador:</b> ${r.t} · <b>VME residual:</b> ${r.rv.toLocaleString('es-CO')} M</p>`;
+  $('#modal').showModal();
+}
+$('#modal').addEventListener('close',()=>$$('.chip').forEach(c=>c.setAttribute('aria-pressed','false')));
+
+/* ---------- slide 2 stats ---------- */
+const STATS=[
+ {v:60,d:0,pre:'+',suf:'',l:'tiendas en Bogotá desde 2012',h:'Una red que ya exige logística profesional',t:'Con más de 60 tiendas, los volúmenes de venta justifican un centro de distribución y un sistema de gestión de inventarios. Hoy cada tienda se abastece por su cuenta.'},
+ {v:3.5,d:1,pre:'',suf:' %',l:'de las ventas se pierde en mermas',h:'COP 3.780 millones al año en mermas',t:'Vencimientos, daños y faltantes. La referencia en retail está entre 2 % y 4 %; la meta del proyecto es bajar a 2,0 % con rotación FEFO y trazabilidad.'},
+ {v:3,d:1,pre:'',suf:' %',l:'de ventas perdidas por agotados',h:'El cliente no encuentra el producto',t:'Cada agotado es una venta perdida y un cliente que puede no volver. La meta es bajar a 1 % con reposición automática basada en pronóstico.'},
+ {v:45,d:0,pre:'',suf:'',l:'días de inventario',h:'Capital inmovilizado en bodega y góndola',t:'Pasar de 45 a 30 días libera capital de trabajo y ahorra cerca de COP 702 millones al año en costo de mantener inventario.'}
+];
+$('#stats').innerHTML=STATS.map((s,k)=>`<button class="tile" data-k="${k}" aria-pressed="false"><span class="big" data-count="${k}">0</span><span class="small">${s.l}</span></button>`).join('');
+$$('#stats .tile').forEach(b=>b.onclick=()=>{$$('#stats .tile').forEach(x=>x.setAttribute('aria-pressed',x===b));const s=STATS[+b.dataset.k];$('#statDetail').innerHTML=`<h3>${s.h}</h3><p class="lead">${s.t}</p>`});
+function countUp(){
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;let t0=null;
+  function step(ts){if(!t0)t0=ts;const k=reduce?1:Math.min(1,(ts-t0)/1300),e=1-Math.pow(1-k,3);
+    STATS.forEach((s,i)=>{const el=document.querySelector(`[data-count="${i}"]`);el.textContent=s.pre+(s.v*e).toFixed(s.d).replace('.',',')+s.suf});
+    if(k<1)requestAnimationFrame(step)}
+  requestAnimationFrame(step);
+}
+
+/* ---------- slide 3 flow ---------- */
+const FLOW=[
+ ['Proveedores','Recibo centralizado','Hoy entregan en cada tienda. Con el proyecto entregan en el CEDI en ventanas acordadas y con acuerdos de nivel de servicio, lo que permite negociar por volumen.'],
+ ['CEDI + WMS','El corazón del modelo','Centro de distribución con sistema de gestión de almacenes: recibo con verificación, ubicación, rotación FEFO (primero en vencer, primero en salir), alistamiento y control de inventario en tiempo real.'],
+ ['Transporte','Ruteo planificado','Vehículos consolidados con rutas planificadas, GPS y cadena de frío para perecederos. Ahorro estimado de COP 300 millones al año.'],
+ ['60 tiendas','Reposición automática','El punto de venta informa lo vendido; el sistema calcula el pedido sugerido según pronóstico y stock de seguridad. Menos agotados y menos sobrestock.'],
+ ['Cliente','Producto disponible','Mayor disponibilidad en góndola (nivel de servicio de 92 % a 97 % o más) y productos más frescos.']
+];
+$('#flow').innerHTML=FLOW.map((f,k)=>`<button class="tile" data-k="${k}" aria-pressed="${k===1}"><span class="step">Eslabón ${k+1}</span><h3>${f[0]}</h3><span class="small">${f[1]}</span></button>`).join('');
+function flowShow(k){$$('#flow .tile').forEach(x=>x.setAttribute('aria-pressed',+x.dataset.k===k));$('#flowDetail').innerHTML=`<h3>${FLOW[k][0]}</h3><p class="lead">${FLOW[k][2]}</p>`}
+$$('#flow .tile').forEach(b=>b.onclick=()=>flowShow(+b.dataset.k)); flowShow(1);
+
+/* ---------- slide 4 bars ---------- */
+const BEN=[['Reducción de mermas',1620,'Las mermas bajan de 3,5 % a 2,0 % de las ventas gracias al WMS (rotación FEFO), la trazabilidad y el recibo centralizado. Es más de la mitad del beneficio.'],
+['Menor costo de inventario',702,'Los días de inventario bajan de 45 a 30. El capital liberado ahorra un 20 % anual de costo de mantener inventario.'],
+['Ventas recuperadas',475,'Los agotados bajan de 3 % a 1 % de las ventas: COP 2.160 millones en ventas que, con margen del 22 %, aportan COP 475 millones.'],
+['Eficiencia en transporte',300,'Consolidar entregas y planificar rutas desde el CEDI reduce viajes, tiempos y costos (Ballou, 2004).']];
+$('#bars').innerHTML=BEN.map((b,k)=>`<button class="bar" data-k="${k}" aria-pressed="false"><span>${b[0]}</span><span class="fill" style="transform:scaleX(${b[1]/1620});${k===0?'background:var(--tag)':''}"></span><span class="v">${b[1].toLocaleString('es-CO')}</span></button>`).join('');
+function barShow(k){$$('#bars .bar').forEach(x=>x.setAttribute('aria-pressed',+x.dataset.k===k));$('#barDetail').innerHTML=`<h3>${BEN[k][0]}: COP ${BEN[k][1].toLocaleString('es-CO')} millones al año</h3><p class="lead">${BEN[k][2]}</p>`}
+$$('#bars .bar').forEach(b=>b.onclick=()=>barShow(+b.dataset.k)); barShow(0);
+
+/* ---------- slide 5 steps ---------- */
+const STEPS=[['Identificar','Revisión del caso, lluvia de ideas, juicio de expertos y estructura de desglose de riesgos (RBS). Resultado: 12 amenazas y 2 oportunidades redactadas como causa, evento y efecto.'],
+['Análisis cualitativo','Cada riesgo se califica de 1 a 5 en probabilidad e impacto. El producto (1 a 25) lo ubica en la matriz de calor: bajo, moderado, alto o extremo.'],
+['Análisis cuantitativo','Se mide en pesos: evaluación financiera (VPN, TIR), valor monetario esperado, simulación de Monte Carlo, análisis de sensibilidad y árbol de decisión (Alonso & Berggrun, 2015).'],
+['Planificar respuestas','Para amenazas: evitar, transferir, mitigar o aceptar. Para oportunidades: explotar, mejorar, compartir o aceptar (PMI, 2017). Cada respuesta tiene responsable y disparador.'],
+['Monitorear','Seguimiento con las plantillas del curso: registro de tareas (Anexo 4), panel ejecutivo (Anexo 5) y control de horas (Anexo 6), revisados por un comité de riesgos.']];
+$('#steps').innerHTML=STEPS.map((s,k)=>`<button class="tile" data-k="${k}" aria-pressed="false"><span class="n">${k+1}</span><h3>${s[0]}</h3></button>`).join('');
+function stepShow(k){$$('#steps .tile').forEach(x=>x.setAttribute('aria-pressed',+x.dataset.k===k));$('#stepDetail').innerHTML=`<h3>Paso ${k+1}: ${STEPS[k][0]}</h3><p class="lead">${STEPS[k][1]}</p>`}
+$$('#steps .tile').forEach(b=>b.onclick=()=>stepShow(+b.dataset.k)); stepShow(0);
+
+/* ---------- slide 6 RBS ---------- */
+const CATS=['Organizacional','Tecnológico','Proyecto y costos','Operacional','Externo y financiero'];
+let rbsHtml=CATS.map(c=>{const ids=Object.keys(RISKS).filter(k=>RISKS[k].c===c);
+  return `<div class="panel" style="display:flex;flex-direction:column;gap:.5rem"><button class="tile" aria-expanded="false" style="border:0;padding:0;background:none"><h3>${c}</h3><span class="small">${ids.length} riesgo${ids.length>1?'s':''} · abrir</span></button><div hidden style="display:flex;flex-direction:column;gap:.4rem">${ids.map(k=>{const [l,cl]=lvl(RISKS[k].p*RISKS[k].i);return `<button class="tile" data-risk="${k}" style="padding:.6rem .8rem"><span><b>${k}</b> ${RISKS[k].n}</span><span class="pill ${cl}" style="align-self:flex-start">${l}</span></button>`}).join('')}</div></div>`}).join('');
+rbsHtml+=`<div class="panel" style="display:flex;flex-direction:column;gap:.5rem"><button class="tile" aria-expanded="false" style="border:0;padding:0;background:none"><h3>Oportunidades</h3><span class="small">2 riesgos positivos · abrir</span></button><div hidden style="display:flex;flex-direction:column;gap:.4rem">${Object.keys(OPS).map(k=>`<div class="tile" style="padding:.6rem .8rem"><span><b>${k}</b> ${OPS[k].n}</span><span class="small">${OPS[k].e}: ${OPS[k].a}</span><span class="pill p-op" style="align-self:flex-start">${OPS[k].v}</span></div>`).join('')}</div></div>`;
+$('#rbs').innerHTML=rbsHtml;
+$$('#rbs [aria-expanded]').forEach(b=>b.onclick=()=>{const open=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',open);b.nextElementSibling.hidden=!open;b.querySelector('.small').textContent=b.querySelector('.small').textContent.replace(open?'abrir':'cerrar',open?'cerrar':'abrir')});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-risk]');if(b)openRisk(b.dataset.risk)});
+
+/* ---------- slide 7 heat ---------- */
+const heat=$('#heat'); const cls=s=>s<=4?'c-b':s<=9?'c-m':s<=14?'c-a':'c-e';
+let hh='';for(let p=5;p>=1;p--)for(let i=1;i<=5;i++)hh+=`<div class="cell ${cls(p*i)}"><span>${p*i}</span></div>`;
+heat.innerHTML=hh+Object.keys(RISKS).map(k=>`<button class="chip" data-chip="${k}" aria-pressed="false" aria-label="${k}: ${RISKS[k].n}">${k}</button>`).join('');
+$$('.chip').forEach(c=>c.onclick=()=>{c.setAttribute('aria-pressed','true');openRisk(c.dataset.chip)});
+const HTXT={inh:`<div class="detail" style="border-left-color:var(--red)"><h3>3 riesgos extremos</h3><p class="lead">R01 resistencia al cambio, R02 integración WMS–ERP y R03 calidad de datos. Ninguno es físico: el éxito depende de las personas y de la información.</p></div>
+<div class="detail" style="border-left-color:var(--amber)"><h3>4 riesgos altos</h3><p class="lead">Sobrecostos del CEDI, proveedores, cadena de frío y ciberataque. R07 es poco probable pero tiene el mayor impacto: pararía el abastecimiento de las 60 tiendas.</p></div>
+<div class="detail" style="border-left-color:var(--green)"><h3>5 riesgos moderados o bajos</h3><p class="lead">Se manejan con acciones de bajo costo o aceptación activa.</p></div>`,
+res:`<div class="detail" style="border-left-color:var(--green)"><h3>Ningún riesgo queda en zona alta o extrema</h3><p class="lead">Con el plan de respuesta, los riesgos bajan a zonas moderada o baja. La exposición del proyecto es gestionable.</p></div>
+<div class="detail"><h3>Lo que más cambia</h3><p class="lead">R01 y R02 pasan de 16 a 6 con gestión del cambio y piloto. R04 baja de 12 a 8 al transferirse con un contrato a precio fijo. R07 baja de 10 a 4 con póliza y respaldo.</p></div>`};
+function placeChips(view){
+  const cnt={};Object.keys(RISKS).forEach(k=>{const r=RISKS[k];const p=view==='inh'?r.p:r.rp,i=view==='inh'?r.i:r.ri;const key=p+'_'+i;const n=cnt[key]=(cnt[key]||0)+1;
+    const col=(n-1)%2,row=Math.floor((n-1)/2);const el=document.querySelector(`[data-chip="${k}"]`);
+    el.style.left=`calc(${(i-1)*20}% + ${2+col*9.4}%)`;el.style.top=`calc(${(5-p)*20}% + ${1.5+row*8.6}%)`;el.style.width='9%';});
+  $('#heatText').innerHTML=HTXT[view];
+}
+$$('[data-view]').forEach(b=>b.onclick=()=>{$$('[data-view]').forEach(x=>x.setAttribute('aria-pressed',x===b));placeChips(b.dataset.view)});
+placeChips('inh');
+
+/* ---------- svg helpers ---------- */
+const NS='http://www.w3.org/2000/svg';
+function el(tag,attrs,text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!==undefined)e.textContent=text;return e}
+
+/* cumulative chart */
+function drawCum(){
+  const s=$('#cumChart');s.innerHTML='';const data=[-4850,-4281,-2948,-1465,-164,977];const z=70,sc=220/4850;
+  const ink=css('--ink'),mut=css('--muted');
+  s.appendChild(el('line',{x1:40,x2:880,y1:z,y2:z,stroke:ink,'stroke-width':2}));
+  data.forEach((v,k)=>{const x=70+k*135,h=Math.max(4,Math.abs(v)*sc);
+    s.appendChild(el('rect',{x,y:v<0?z:z-h,width:80,height:h,rx:4,fill:v<0?css('--red'):css('--green'),opacity:v<0?(.45+.55*Math.abs(v)/4850):1}));
+    s.appendChild(el('text',{x:x+40,y:v<0?z+h+22:z-h-8,'text-anchor':'middle','font-size':17,'font-weight':700,fill:ink},v.toLocaleString('es-CO')));
+    s.appendChild(el('text',{x:x+40,y:v<0?z-10:z+22,'text-anchor':'middle','font-size':15,fill:mut},'Año '+k));});
+}
+
+/* VME chart */
+let vmeView='inh';
+function drawVme(){
+  const s=$('#vmeChart');s.innerHTML='';const ids=Object.keys(RISKS);const ink=css('--ink'),mut=css('--muted');
+  ids.forEach((k,j)=>{const r=RISKS[k];const v=vmeView==='inh'?r.pr*r.im/100:r.rv;const w=v/160*430;const y=12+j*31;
+    const g=el('g',{class:'tree-alt',tabindex:0,role:'button','aria-label':k+' '+r.n});
+    g.appendChild(el('text',{x:0,y:y+17,'font-size':14,'font-weight':700,fill:ink},k));
+    g.appendChild(el('text',{x:42,y:y+17,'font-size':13,fill:mut},r.n.length>24?r.n.slice(0,23)+'…':r.n));
+    g.appendChild(el('rect',{x:215,y:y+3,width:Math.max(2,w),height:20,rx:3,fill:vmeView==='inh'?css('--red'):css('--blue')}));
+    g.appendChild(el('text',{x:222+w,y:y+18,'font-size':13,'font-weight':700,fill:ink},v.toLocaleString('es-CO',{maximumFractionDigits:1})));
+    g.onclick=()=>openRisk(k);g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openRisk(k)}};
+    s.appendChild(g);});
+  $('#vmeTotal').textContent=vmeView==='inh'?'921':'336,5';
+  $('#vmeNote').textContent=vmeView==='inh'?'millones de COP · 19 % de la inversión':'millones de COP · reducción de 584,5 M con respuestas que cuestan 250 M';
+  $('#vmeTotal').style.color=vmeView==='inh'?css('--red'):css('--blue');
+}
+$$('[data-vme]').forEach(b=>b.onclick=()=>{$$('[data-vme]').forEach(x=>x.setAttribute('aria-pressed',x===b));vmeView=b.dataset.vme;drawVme()});
+
+/* ---------- Monte Carlo ---------- */
+const R=.14;
+function tri(a,b,c){const u=Math.random(),f=(b-a)/(c-a);return u<f?a+Math.sqrt(u*(c-a)*(b-a)):c-Math.sqrt((1-u)*(c-a)*(c-b))}
+function npv(x){const cogs=x.s*(1-x.m);const ben=x.s*x.dm+x.s*x.dl*x.m+cogs/360*x.dd*.2+x.t;const f=[x.r,.85,1,1,1];let v=-x.i;f.forEach((k,t)=>v+=(ben*k-x.o)/Math.pow(1+R,t+1));return v}
+const PA={i:[4500,4850,6000],dm:[.008,.015,.02],dl:[.01,.02,.025],dd:[8,15,18],o:[800,900,1150],r:[.3,.5,.6],t:[150,300,400]};
+const PB={i:[4850,5150,5550],dm:[.012,.016,.02],dl:[.015,.02,.025],dd:[12,15,18],o:[820,900,1000],r:[.45,.55,.65],t:[250,300,400]};
+const smp=P=>({s:tri(100000,108000,115000),m:tri(.2,.22,.24),i:tri(...P.i),dm:tri(...P.dm),dl:tri(...P.dl),dd:tri(...P.dd),o:tri(...P.o),r:tri(...P.r),t:tri(...P.t)});
+const LO=-4000,HI=3600,NB=56,BW=(HI-LO)/NB;let hA,hB,sA,sB,cA,cB,pA,pB,nIt=0,running=false,mcView='AB',mcDone=false;
+function mcReset(){hA=new Array(NB).fill(0);hB=new Array(NB).fill(0);sA=sB=cA=cB=pA=pB=0;nIt=0}
+mcReset();
+function drawMc(){
+  const cv=$('#mc'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
+  const X=v=>50+(v-LO)/(HI-LO)*(W-70);const base=H-50;
+  const show=[];if(mcView!=='B')show.push([hA,css('--red')]);if(mcView!=='A')show.push([hB,css('--blue')]);
+  const mx=Math.max(1,...show.flatMap(s=>s[0]));
+  ctx.globalAlpha=.72;show.forEach(([h,c])=>{ctx.fillStyle=c;h.forEach((k,j)=>{const hh=k/mx*(base-30);ctx.fillRect(X(LO+j*BW)+1,base-hh,(W-70)/NB-2,hh)})});
+  ctx.globalAlpha=1;ctx.strokeStyle=css('--ink');ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(X(0),14);ctx.lineTo(X(0),base);ctx.stroke();
+  ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(40,base);ctx.lineTo(W-10,base);ctx.stroke();
+  ctx.fillStyle=css('--muted');ctx.font='20px Public Sans, Arial';ctx.textAlign='center';
+  [-4000,-2000,0,2000].forEach(v=>ctx.fillText(v.toLocaleString('es-CO'),X(v),base+30));
+  if(!nIt){ctx.fillText('Pulse «Ejecutar simulación» para generar los escenarios',W/2,H/2-20)}
+  $('#mcCount').textContent=nIt.toLocaleString('es-CO')+' iteraciones';
+  if(nIt){$('#pa').textContent=(pA/nIt*100).toFixed(1).replace('.',',')+' %';$('#pb').textContent=(pB/nIt*100).toFixed(1).replace('.',',')+' %';$('#ma').textContent=fmt(sA/nIt)+' M';$('#mb').textContent=fmt(sB/nIt)+' M'}
+}
+function mcTick(){
+  const batch=matchMedia('(prefers-reduced-motion: reduce)').matches?10000:200;
+  for(let k=0;k<batch&&nIt<10000;k++){const a=npv(smp(PA)),b=npv(smp(PB));sA+=a;sB+=b;if(a>0)pA++;if(b>0)pB++;
+    const ja=Math.floor((a-LO)/BW),jb=Math.floor((b-LO)/BW);if(ja>=0&&ja<NB)hA[ja]++;if(jb>=0&&jb<NB)hB[jb]++;nIt++}
+  drawMc();if(nIt<10000)requestAnimationFrame(mcTick);else{running=false;mcDone=true;$('#mcRun').textContent='Volver a simular';$('#mcRun').disabled=false}
+}
+$('#mcRun').onclick=()=>{if(running)return;running=true;$('#mcRun').disabled=true;mcReset();mcTick()};
+$$('[data-mc]').forEach(b=>b.onclick=()=>{$$('[data-mc]').forEach(x=>x.setAttribute('aria-pressed',x===b));mcView=b.dataset.mc;drawMc()});
+
+/* ---------- tornado ---------- */
+const TOR=[['Reducción de mermas',-1199,2532,'0,8 a 2,0 puntos','Es la variable crítica: asegurar la reducción de mermas (datos, FEFO, cadena de frío y adopción del personal) es la prioridad del control.'],
+['Inversión inicial',-173,1327,'4.500 a 6.000 M','Si la inversión llega a COP 6.000 millones, el VPN cae a −173. Por eso se transfiere el riesgo con un contrato a precio fijo.'],
+['Días de inventario reducidos',34,1381,'8 a 18 días','Depende de la calidad de los datos maestros (R03) y del pronóstico (R08).'],
+['Costo operativo incremental',119,1321,'800 a 1.150 M/año','Controlar el arriendo y el personal del CEDI protege el resultado año tras año.'],
+['Ventas anuales',381,1499,'100.000 a 115.000 M','Más ventas amplifican todos los beneficios del proyecto.'],
+['Reducción de ventas perdidas',293,1319,'1,0 a 2,5 puntos','Depende del cumplimiento de proveedores (R05) y de la reposición automática.'],
+['Curva de adopción año 1',434,1249,'30 % a 60 %','Una adopción lenta por resistencia al cambio (R01) o retrasos (R02) cuesta valor el primer año.'],
+['Ahorro en transporte',545,1265,'150 a 400 M/año','Efecto moderado; depende del ruteo y de la seguridad en ruta.'],
+['Margen bruto',905,1050,'20 % a 24 %','Casi no mueve el resultado: no requiere atención prioritaria.']];
+function drawTor(sel){
+  const s=$('#tornado');s.innerHTML='';const lo=-1400,hi=2700;const X=v=>250+(v-lo)/(hi-lo)*490;const ink=css('--ink'),mut=css('--muted');
+  TOR.forEach((t,j)=>{const y=14+j*48;const g=el('g',{class:'tree-alt',tabindex:0,role:'button','aria-label':t[0]});
+    g.appendChild(el('rect',{x:0,y:y-4,width:760,height:44,fill:j===sel?css('--yellow-soft'):'transparent',rx:6}));
+    g.appendChild(el('text',{x:8,y:y+22,'font-size':15,fill:ink,'font-weight':j===sel?700:400},t[0]));
+    g.appendChild(el('rect',{x:X(Math.min(t[1],977)),y:y+4,width:Math.abs(X(977)-X(t[1])),height:28,fill:css('--red'),rx:3}));
+    g.appendChild(el('rect',{x:X(977),y:y+4,width:Math.abs(X(t[2])-X(977)),height:28,fill:css('--blue'),rx:3}));
+    g.onclick=()=>torShow(j);g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();torShow(j)}};s.appendChild(g)});
+  s.appendChild(el('line',{x1:X(977),x2:X(977),y1:4,y2:448,stroke:ink,'stroke-width':2}));
+  s.appendChild(el('text',{x:X(977),y:466,'text-anchor':'middle','font-size':14,fill:mut},'Caso base 977'));
+  s.appendChild(el('text',{x:X(0),y:466,'text-anchor':'middle','font-size':14,fill:mut},'0'));
+}
+function torShow(j){drawTor(j);const t=TOR[j];$('#torDetail').innerHTML=`<h3>${t[0]}</h3><p class="lead">Rango probado: ${t[3]}.</p><p class="big" style="margin:.5rem 0"><span style="color:var(--red)">${t[1].toLocaleString('es-CO')}</span> a <span style="color:var(--blue)">${t[2].toLocaleString('es-CO')}</span></p><p class="small">VPN en millones de COP</p><p class="lead" style="margin-top:.6rem">${t[4]}</p>`}
+
+/* ---------- tree ---------- */
+const ALT=[['A','CEDI propio con plan de respuesta',[255,1106,1958],1106,'Recomendada','Maximiza el valor esperado y es la única alternativa cuyo escenario pesimista sigue siendo positivo. Exige una inversión de COP 5.440 millones con reservas.'],
+['B','Operador logístico tercerizado (3PL)',[-314,488,1274],483,'Respaldo','Invierte menos (COP 1.900 millones), pero paga tarifas más altas, controla menos mermas e inventarios y deja a IBER dependiendo de un tercero en su proceso más crítico.'],
+['C','CEDI propio sin plan de respuesta',[-1421,-131,1118],-143,'Rechazada','El mismo proyecto sin gestión de riesgos tiene valor esperado negativo. La diferencia con A (COP 1.249 millones) es el valor de gestionar riesgos.'],
+['D','Mantener la situación actual',[-2500,-1200,-300],-1320,'Rechazada','No hacer nada es la peor opción: las mermas y los agotados crecen con cada tienda nueva.']];
+function drawTree(sel){
+  const s=$('#tree');s.innerHTML='';const ink=css('--ink'),mut=css('--muted'),pan=css('--panel');
+  s.appendChild(el('rect',{x:10,y:240,width:40,height:40,fill:ink,rx:4}));
+  ALT.forEach((a,j)=>{const y=60+j*130;const best=j===0;const on=j===sel;
+    const col=a[3]>500?css('--green'):a[3]>0?css('--amber'):css('--red');
+    s.appendChild(el('line',{x1:50,y1:260,x2:290,y2:y,stroke:on?css('--tag'):(best?css('--green'):mut),'stroke-width':on?6:(best?4:2)}));
+    const g=el('g',{class:'tree-alt',tabindex:0,role:'button','aria-label':'Alternativa '+a[0]+': '+a[1]});
+    g.appendChild(el('rect',{x:110,y:y-20+(260-y)*0.25-6,width:170,height:36,rx:8,fill:pan,stroke:on?css('--tag'):col,'stroke-width':on?4:2}));
+    g.appendChild(el('text',{x:195,y:y+(260-y)*0.25+3,'text-anchor':'middle','font-size':15,'font-weight':700,fill:ink},a[0]+'. '+['CEDI + plan','Operador 3PL','CEDI sin plan','No hacer nada'][j]));
+    g.appendChild(el('circle',{cx:305,cy:y,r:15,fill:css('--blue')}));
+    g.appendChild(el('text',{x:305,y:y+40,'text-anchor':'middle','font-size':16,'font-weight':800,fill:col},'VME '+a[3].toLocaleString('es-CO')));
+    ['P10 · 0,3','P50 · 0,4','P90 · 0,3'].forEach((lab,q)=>{const yy=y-38+q*38;
+      g.appendChild(el('line',{x1:320,y1:y,x2:560,y2:yy,stroke:mut,'stroke-width':1.5}));
+      g.appendChild(el('text',{x:430,y:yy-6+(y-yy)*0.45,'font-size':13,fill:mut},lab));
+      g.appendChild(el('polygon',{points:`560,${yy} 578,${yy-9} 578,${yy+9}`,fill:css('--tag')}));
+      g.appendChild(el('text',{x:590,y:yy+5,'font-size':15,fill:ink},a[2][q].toLocaleString('es-CO')))});
+    g.onclick=()=>treeShow(j);g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();treeShow(j)}};s.appendChild(g)});
+}
+function treeShow(j){drawTree(j);const a=ALT[j];const cl=j===0?'p-bajo':j===1?'p-mod':'p-ext';
+  $('#treeDetail').innerHTML=`<span class="pill ${cl}">${a[4]}</span><h3 style="margin-top:.5rem">${a[0]}. ${a[1]}</h3><p class="big" style="margin:.4rem 0">VME ${a[3].toLocaleString('es-CO')}</p><p class="small">0,3 × (${a[2][0].toLocaleString('es-CO')}) + 0,4 × (${a[2][1].toLocaleString('es-CO')}) + 0,3 × (${a[2][2].toLocaleString('es-CO')})</p><p class="lead" style="margin-top:.6rem">${a[5]}</p>`}
+
+/* ---------- respuestas ---------- */
+const STR=['Todas','Mitigar','Transferir','Aceptar','Oportunidades'];
+$('#respFilter').innerHTML=STR.map((s,k)=>`<button aria-pressed="${k===0}" data-f="${s}">${s}</button>`).join('');
+function respShow(f){
+  let rows=Object.keys(RISKS).filter(k=>f==='Todas'||RISKS[k].e===f).map(k=>{const r=RISKS[k];const [l,c]=lvl(r.rp*r.ri);return `<tr><td><button class="tile" data-risk="${k}" style="padding:.2rem .5rem;display:inline-flex"><b>${k}</b></button></td><td>${r.n}</td><td><b>${r.e}</b></td><td>${r.a}</td><td>${r.who}</td><td><span class="pill ${c}">${l}</span></td></tr>`});
+  if(f==='Todas'||f==='Oportunidades')rows=rows.concat(Object.keys(OPS).map(k=>`<tr><td><b>${k}</b></td><td>${OPS[k].n}</td><td><b>${OPS[k].e}</b></td><td>${OPS[k].a}</td><td>${OPS[k].who}</td><td><span class="pill p-op">Oportunidad</span></td></tr>`));
+  $('#respTable').innerHTML=`<tr><th>ID</th><th>Riesgo</th><th>Estrategia</th><th>Acciones</th><th>Responsable</th><th>Nivel residual</th></tr>`+rows.join('');
+}
+$$('#respFilter button').forEach(b=>b.onclick=()=>{$$('#respFilter button').forEach(x=>x.setAttribute('aria-pressed',x===b));respShow(b.dataset.f)});
+respShow('Todas');
+
+/* ---------- seguimiento ---------- */
+const TASKS=[['T1','Diagnóstico logístico AS-IS','Especialista en logística','2026-09-01','2026-09-30','Completo','100 %',60,320,'No'],
+['T2','Caso de negocio y análisis de riesgos','Analista de riesgos','2026-09-21','2026-10-23','En progreso','80 %',40,240,'No'],
+['T3','Aprobación de la alta gerencia','Gerente general IBER','2026-10-26','2026-11-06','No iniciada','0 %',0,16,'No'],
+['T4','Diseño de red y del CEDI','Especialista en logística','2026-11-09','2027-01-15','No iniciada','0 %',120,480,'R04'],
+['T5','Adecuación y dotación del CEDI','Contratista de obra','2027-01-18','2027-05-28','No iniciada','0 %',2500,1200,'R04, R11'],
+['T6','WMS e integración ERP/POS','Jefe de TI','2027-01-18','2027-06-25','No iniciada','0 %',1300,1600,'R02, R07'],
+['T7','Depuración de datos maestros','Analista de datos','2026-11-16','2027-02-26','No iniciada','0 %',80,640,'R03'],
+['T8','Pronóstico de demanda y reposición','Gerente de Operaciones','2027-02-01','2027-05-14','No iniciada','0 %',150,560,'R08'],
+['T9','Contratación de transporte y ruteo','Jefe de Transporte','2027-03-01','2027-05-28','No iniciada','0 %',100,240,'R09, R12'],
+['T10','Gestión del cambio y capacitación','Talento Humano','2026-11-09','2027-09-24','No iniciada','0 %',250,960,'R01, R10'],
+['T11','Piloto en 5 tiendas','Gerente de proyecto','2027-06-28','2027-08-06','No iniciada','0 %',100,400,'R05, R06'],
+['T12','Despliegue a 60 tiendas','Gerente de proyecto','2027-08-09','2027-10-15','No iniciada','0 %',100,800,'R01, R05'],
+['T13','Cierre y lecciones aprendidas','Gerente de proyecto','2027-10-18','2027-11-12','No iniciada','0 %',50,160,'No']];
+const dfmt=s=>s.split('-').reverse().join('/');
+$('#a4').innerHTML=`<tr><th>ID</th><th>Tarea</th><th>Asignada a</th><th>Estado</th><th>En riesgo</th><th>Fecha límite</th><th class="num">Avance</th><th class="num">Costo (M)</th><th class="num">Horas</th></tr>`+
+ TASKS.map(t=>`<tr><td>${t[0]}</td><td>${t[1]}</td><td>${t[2]}</td><td><span class="pill ${t[5]==='Completo'?'p-bajo':t[5]==='En progreso'?'p-op':'p-mod'}">${t[5]}</span></td><td>${t[9]==='No'?'No':t[9].split(', ').map(r=>`<button class="tile" data-risk="${r}" style="display:inline-flex;padding:.1rem .4rem;margin:.1rem">${r}</button>`).join('')}</td><td>${dfmt(t[4])}</td><td class="num">${t[6]}</td><td class="num">${t[7].toLocaleString('es-CO')}</td><td class="num">${t[8].toLocaleString('es-CO')}</td></tr>`).join('')+
+ `<tr><td></td><td><b>Total</b></td><td></td><td></td><td></td><td></td><td></td><td class="num"><b>4.850</b></td><td class="num"><b>7.616</b></td></tr>`;
+function drawGantt(){
+  const s=$('#gantt');s.innerHTML='';const t0=new Date('2026-09-01'),t1=new Date('2027-11-30');const X=d=>290+(new Date(d)-t0)/(t1-t0)*670;
+  const ink=css('--ink'),mut=css('--muted'),line=css('--line');
+  for(let m=0;m<15;m++){const d=new Date(2026,8+m,1);const x=X(d.toISOString().slice(0,10));s.appendChild(el('line',{x1:x,x2:x,y1:20,y2:440,stroke:line}));
+    if(m%2===0)s.appendChild(el('text',{x:x+2,y:462,'font-size':13,fill:mut},d.toLocaleDateString('es-CO',{month:'short',year:'2-digit'})))}
+  TASKS.forEach((t,j)=>{const y=26+j*32;s.appendChild(el('text',{x:0,y:y+15,'font-size':13.5,fill:ink},t[0]+' '+t[1]));
+    const c=t[5]==='Completo'?css('--green'):t[5]==='En progreso'?css('--blue'):(t[9]!=='No'?css('--amber'):mut);
+    s.appendChild(el('rect',{x:X(t[3]),y:y+2,width:Math.max(4,X(t[4])-X(t[3])),height:18,rx:4,fill:c}))});
+  const xc=X('2026-10-02');s.appendChild(el('line',{x1:xc,x2:xc,y1:10,y2:440,stroke:css('--red'),'stroke-width':2,'stroke-dasharray':'6 4'}));
+  s.appendChild(el('text',{x:xc+4,y:16,'font-size':13,fill:css('--red'),'font-weight':700},'Corte'));
+}
+
+/* ---------- vote ---------- */
+const VOTE={A:'Coincide con el análisis: VME de COP 1.106 millones y 95,8 % de probabilidad de crear valor. La condición es ejecutar el plan de respuesta y hacer el piloto en 5 tiendas.',
+B:'Es una opción válida si se quiere invertir menos, pero su VME (COP 483 millones) es menos de la mitad del de la alternativa A y deja el proceso más crítico en manos de un tercero.',
+C:'Es la trampa del caso base: sin gestión de riesgos, el VME es de −COP 143 millones y la probabilidad de crear valor es inferior al 50 %.',
+D:'Es la peor opción: las pérdidas por mermas y agotados crecen con cada tienda nueva. VME estimado de −COP 1.320 millones.'};
+$$('#vote button').forEach(b=>b.onclick=()=>{$$('#vote button').forEach(x=>x.setAttribute('aria-pressed',x===b));$('#voteOut').textContent=VOTE[b.dataset.v]});
+
+/* ---------- lifecycle ---------- */
+function redraw(){drawCum();drawVme();drawMc();drawTor(window._torSel??0);drawTree(window._treeSel??0);drawGantt()}
+const _ts=torShow;torShow=function(j){window._torSel=j;_ts(j)};
+const _tr=treeShow;treeShow=function(j){window._treeSel=j;_tr(j)};
+function onEnter(i){
+  if(i===2)countUp();
+  if(i===10&&!mcDone&&!running){running=true;$('#mcRun').disabled=true;mcReset();mcTick()}
+}
+torShow(0);treeShow(0);redraw();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw);
+const h=parseInt(location.hash.slice(1));show(isNaN(h)?0:h-1,true);
+window.addEventListener('hashchange',()=>{const n=parseInt(location.hash.slice(1));if(!isNaN(n)&&n-1!==cur)show(n-1,true)});
+})();
+</script>
+</body>
+</html>
